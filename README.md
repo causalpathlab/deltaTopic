@@ -22,8 +22,10 @@ Rscript data/CRA001160/process_data_final_QC_allgenes.R
 ### Training models
 
 ```python
-# train deltaTopic model on the whole dataset
-python Train_TotalDeltaETM_PDAC.py --nLV 32 --train_size 1 --EPOCHS 2000 --lr 0.001
+# train deltaTopic model
+python Train_TotalDeltaETM_PDAC.py --nLV 32 --EPOCHS 2000 --lr 0.001
+# run the script to pull the latent topics and loadings matrix from the trained model
+python get_latent.py --SavePath PATH_TO_SAVED_MODEL 
 ```
 
 ### Analysis
