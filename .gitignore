@@ -8,6 +8,7 @@ analysis/
 *DS_Store
 !data/CRA001160/final_CRA001160_spliced_allgenes.h5ad
 !data/CRA001160/final_CRA001160_unspliced_allgenes.h5ad
+!data/CRA001160/process_data_final_QC_allgenes.R
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
