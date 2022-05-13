@@ -136,3 +136,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 module/.DS_Store
+run_analysis.sh
