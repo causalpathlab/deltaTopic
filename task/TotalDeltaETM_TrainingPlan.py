@@ -62,8 +62,8 @@ class TrainingPlan(pl.LightningModule):
         lr_patience: int = 30,
         lr_threshold: float = 0.0,
         lr_scheduler_metric: Literal[
-            "elbo_validation", "reconstruction_loss_validation", "kl_local_validation"
-        ] = "elbo_validation",
+            "elbo_validation", "reconstruction_loss_validation", "kl_local_validation", "elbo_train"
+        ] = "elbo_train",
         lr_min: float = 0,
         **loss_kwargs,
     ):

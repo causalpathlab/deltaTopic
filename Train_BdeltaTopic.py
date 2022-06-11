@@ -49,6 +49,8 @@ model.train(
     #check_val_every_n_epoch=5,
     batch_size=args.bs,
     logger = wandb_logger,
+    n_epochs_kl_warmup = 400,
+    reduce_lr_on_plateau = True,
     **model_kwargs,
     )
 #%%
