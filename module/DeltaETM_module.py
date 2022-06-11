@@ -981,17 +981,6 @@ class BayesianETM_module(BaseModuleClass):
   
         return dict(z=z)
     
-    def reconstruction_loss(
-        self,
-        x: torch.Tensor,
-        recon: torch.Tensor,
-    ) -> torch.Tensor:
-
-        reconstruction_loss = None
-        reconstruction_loss = -etm_llik(x,recon)
-        
-        return reconstruction_loss
-
     #' Dirichlet log-likelihood:
     #' lgamma(sum a) - lgamma(sum a + x)
     #' sum lgamma(a + x) - lgamma(a)
@@ -1152,7 +1141,7 @@ class BayesianETM_module(BaseModuleClass):
         kl_divergence_beta = rho_kl + delta_kl
         kl_local = kl_divergence_z
         reconstruction_loss = reconstruction_loss_spliced + reconstruction_loss_unspliced
-        loss = torch.mean(reconstruction_loss + kl_weight * kl_local + kl_weight_beta * kl_divergence_beta) * x.size(0)
+        loss = torch.mean(reconstruction_loss + kl_weight * kl_local + kl_weight_beta * kl_divergence_beta/x.size(0)) * x.size(0)
 
         return LossRecorder(loss, reconstruction_loss, kl_local,
                             reconstruction_loss_spliced=reconstruction_loss_spliced,
