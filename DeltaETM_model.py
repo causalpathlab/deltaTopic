@@ -1576,7 +1576,6 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         adata: AnnData = None,
         deterministic: bool = True,
         batch_size: int = 128,
-        output_softmax_z: bool = True,
     ) -> List[np.ndarray]:
         """
         Return the latent space embedding for each dataset, i.e., spliced and unspliced
@@ -1604,12 +1603,12 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
                 sample_batch_unspliced,
                 *_,
             ) = _unpack_tensors(tensors)
-            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic, output_softmax_z = output_softmax_z)
+            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic)
             latent_z.append(z_dict["z"])                
 
         latent_z = torch.cat(latent_z).cpu().detach().numpy()
         
-        print(f'Deterministic: {deterministic}\nOutput_softmax_z: {output_softmax_z}')
+        print(f'Deterministic: {deterministic}')
         return latent_z
     
     @torch.no_grad()
@@ -1628,13 +1627,9 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             Minibatch size for data loading into model.
         """
         self.module.eval()
-        log_sftm = nn.LogSoftmax(dim=-1)
-        log_delta = self.module.decoder.delta.detach()
-        log_rho = self.module.decoder.rho.detach()
+        rho, delta = self.module.decoder.get_rho_delta()
         
-        delta = torch.exp(log_sftm(log_delta))
-        rho = torch.exp(log_sftm(log_rho))
-        return delta.cpu().numpy(), rho.cpu().numpy(), log_delta.cpu().numpy(), log_rho.cpu().numpy()
+        return delta.cpu().numpy(), rho.cpu().numpy()
     
     def save(
         self,

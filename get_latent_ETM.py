@@ -5,8 +5,8 @@ import os
 import matplotlib.pyplot as plt
 import argparse
 import glob
-#%% get LVs for TotalDeltaETM
-from DeltaETM_model import TotalDeltaETM
+#%% get LVs for TotalETM
+from DeltaETM_model import ETM
 
 saved_models_list = os.listdir('models')
 fdplot_gene_space = False
@@ -17,11 +17,9 @@ parser.add_argument("--plotUMAP", default=False, action="store_true")
 
 args = parser.parse_args()
 SaveFolderPath = args.SavePath
-#SaveFolderPath = f"models/TotalDeltaETM_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}"
+SaveFolderPath = "models/ETM_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1"
 print(SaveFolderPath)
-
-
-model = TotalDeltaETM.load(SaveFolderPath)
+model = ETM.load(SaveFolderPath)
 
 topics_np = model.get_latent_representation()
 topics_untran_np = model.get_latent_representation(output_softmax_z=False)
@@ -49,20 +47,20 @@ log_delta_df.to_csv(os.path.join(SaveFolderPath,"log_delta_weights.csv"))
 #%%
 
 if args.plotUMAP:
-    model.adata.obsm['X_DeltaETM_topic'] = topics_df
-    model.adata.obsm["X_DeltaETM_topic_untran"] = topics_untran_df
+    model.adata.obsm['X_ETM_topic'] = topics_df
+    model.adata.obsm["X_ETM_topic_untran"] = topics_untran_df
     for i in range(topics_np.shape[1]):
-        model.adata.obs[f"DeltaETM_topic_{i}"] = topics_df[[f"topic_{i}"]]
-        model.adata.obs[f"DeltaETM_topic_untran_{i}"] = topics_untran_df[[f"topic_{i}"]]
+        model.adata.obs[f"ETM_topic_{i}"] = topics_df[[f"topic_{i}"]]
+        model.adata.obs[f"ETM_topic_untran_{i}"] = topics_untran_df[[f"topic_{i}"]]
     #%% plot UMAP on topic space
     model.adata.obs['sample_id_cat'] = model.adata.obs['sample_id'].astype('category',copy=False)
 
-    sc.pp.neighbors(model.adata, use_rep="X_DeltaETM_topic")
+    sc.pp.neighbors(model.adata, use_rep="X_ETM_topic")
     sc.tl.umap(model.adata)
     # Save UMAP to custom .obsm field.
     model.adata.obsm["topic_space_umap"] = model.adata.obsm["X_umap"].copy()
     fig = plt.figure()
-    sc.pl.embedding(model.adata, "topic_space_umap", color = [f"DeltaETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
+    sc.pl.embedding(model.adata, "topic_space_umap", color = [f"ETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
     plt.savefig(os.path.join(SaveFolderPath,'UMAP_topic.png'))
 
     sc.pl.embedding(model.adata, "topic_space_umap", color = ['tumor_type','sample_id_cat'], frameon=False)
@@ -70,12 +68,12 @@ if args.plotUMAP:
 
     #%% plot UMAP on topic space untransformed
     model.adata.obs['sample_id_cat'] = model.adata.obs['sample_id'].astype('category',copy=False)
-    sc.pp.neighbors(model.adata, use_rep="X_DeltaETM_topic_untran")
+    sc.pp.neighbors(model.adata, use_rep="X_ETM_topic_untran")
     sc.tl.umap(model.adata)
     # Save UMAP to custom .obsm field.
     model.adata.obsm["topic_space_umap_untran"] = model.adata.obsm["X_umap"].copy()
     fig = plt.figure()
-    sc.pl.embedding(model.adata, "topic_space_umap_untran", color = [f"DeltaETM_topic_untran_{i}" for i in range(topics_np.shape[1])], frameon=False)
+    sc.pl.embedding(model.adata, "topic_space_umap_untran", color = [f"ETM_topic_untran_{i}" for i in range(topics_np.shape[1])], frameon=False)
     plt.savefig(os.path.join(SaveFolderPath,'UMAP_topic_untran.png'))
 
     sc.pl.embedding(model.adata, "topic_space_umap_untran", color = ['tumor_type','sample_id_cat'], frameon=False)
@@ -90,7 +88,7 @@ if args.plotUMAP:
         # Save UMAP to custom .obsm field.
         model.adata.obsm["spliced_umap"] = model.adata.obsm["X_umap"].copy()
         fig = plt.figure()
-        sc.pl.embedding(model.adata, "spliced_umap", color = [f"DeltaETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
+        sc.pl.embedding(model.adata, "spliced_umap", color = [f"ETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
         plt.savefig(os.path.join(SaveFolderPath,'UMAP_spliced.png'))
         fig = plt.figure()
         sc.pl.embedding(model.adata, "spliced_umap", color = ['tumor_type','sample_id_cat'], frameon=False)
@@ -102,7 +100,7 @@ if args.plotUMAP:
         # Save UMAP to custom .obsm field.
         model.adata.obsm["unspliced_umap"] = model.adata.obsm["X_umap"].copy()
         fig = plt.figure()
-        sc.pl.embedding(model.adata, "unspliced_umap", color = [f"DeltaETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
+        sc.pl.embedding(model.adata, "unspliced_umap", color = [f"ETM_topic_{i}" for i in range(topics_np.shape[1])], frameon=False)
         plt.savefig(os.path.join(SaveFolderPath,'UMAP_unspliced.png')) 
         fig = plt.figure()
         sc.pl.embedding(model.adata, "unspliced_umap", color = ['tumor_type','sample_id_cat'], frameon=False)

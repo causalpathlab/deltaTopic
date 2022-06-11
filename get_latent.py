@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import argparse
 import glob
 #%% get LVs for TotalDeltaETM
-from DeltaETM_model import TotalDeltaETM
+from DeltaETM_model import TotalDeltaETM, BDeltaTopic
+
 
 saved_models_list = os.listdir('models')
 fdplot_gene_space = False
@@ -21,39 +22,43 @@ SaveFolderPath = args.SavePath
 print(SaveFolderPath)
 
 
-model = TotalDeltaETM.load(SaveFolderPath)
-
-topics_np = model.get_latent_representation()
-topics_untran_np = model.get_latent_representation(output_softmax_z=False)
+#model = TotalDeltaETM.load(SaveFolderPath)
+SaveFolderPath = "models/BDeltaTopic_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1"
+model = BDeltaTopic.load(SaveFolderPath)
+topics_np = model.get_latent_representation(deterministic=True)
+#topics_untran_np = model.get_latent_representation(output_softmax_z=False)
 
 
 topics_df = pd.DataFrame(topics_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_np.shape[1])])
 topics_df.to_csv(os.path.join(SaveFolderPath,"topics.csv"))
-topics_untran_df = pd.DataFrame(topics_untran_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_untran_np.shape[1])])
-topics_untran_df.to_csv(os.path.join(SaveFolderPath,"topics_untran.csv"))
+#topics_untran_df = pd.DataFrame(topics_untran_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_untran_np.shape[1])])
+#topics_untran_df.to_csv(os.path.join(SaveFolderPath,"topics_untran.csv"))
 
 model.adata.obs[['sample_id','tumor_type','sex']].to_csv(os.path.join(SaveFolderPath,"samples.csv"))
 model.adata.var[['unique_gene_id']].to_csv(os.path.join(SaveFolderPath,"genes.csv"))
 # get the weight matrix
 
-delta, rho, log_delta, log_rho = model.get_weights()
+#delta, rho, log_delta, log_rho = model.get_weights()
+delta, rho = model.get_weights()
 rho_df = pd.DataFrame(rho, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
 rho_df.to_csv(os.path.join(SaveFolderPath,"rho_weights.csv"))
-log_rho_df = pd.DataFrame(log_rho, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
-log_rho_df.to_csv(os.path.join(SaveFolderPath,"log_rho_weights.csv"))
+#log_rho_df = pd.DataFrame(log_rho, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
+#log_rho_df.to_csv(os.path.join(SaveFolderPath,"log_rho_weights.csv"))
 
 delta_df = pd.DataFrame(delta, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
 delta_df.to_csv(os.path.join(SaveFolderPath,"delta_weights.csv"))
-log_delta_df = pd.DataFrame(log_delta, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
-log_delta_df.to_csv(os.path.join(SaveFolderPath,"log_delta_weights.csv"))
+#log_delta_df = pd.DataFrame(log_delta, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
+#log_delta_df.to_csv(os.path.join(SaveFolderPath,"log_delta_weights.csv"))
+# %%
+
 #%%
 
 if args.plotUMAP:
     model.adata.obsm['X_DeltaETM_topic'] = topics_df
-    model.adata.obsm["X_DeltaETM_topic_untran"] = topics_untran_df
+    #model.adata.obsm["X_DeltaETM_topic_untran"] = topics_untran_df
     for i in range(topics_np.shape[1]):
         model.adata.obs[f"DeltaETM_topic_{i}"] = topics_df[[f"topic_{i}"]]
-        model.adata.obs[f"DeltaETM_topic_untran_{i}"] = topics_untran_df[[f"topic_{i}"]]
+        #model.adata.obs[f"DeltaETM_topic_untran_{i}"] = topics_untran_df[[f"topic_{i}"]]
     #%% plot UMAP on topic space
     model.adata.obs['sample_id_cat'] = model.adata.obs['sample_id'].astype('category',copy=False)
 

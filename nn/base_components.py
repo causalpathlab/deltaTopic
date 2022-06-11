@@ -493,8 +493,8 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         z: torch.Tensor,
     ):
         
-        self.log_softmax_rho = self.logsftmax(self.rho)
-        self.log_softmax_delta = (self.delta)
+        self.log_softmax_rho = self.logsftm_rho(self.rho)
+        self.log_softmax_delta = self.logsftm_delta(self.delta)
         
 
         log_beta_spliced = self.log_softmax_rho + self.log_softmax_delta
@@ -571,7 +571,21 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         
         return rho, delta, rho_kl, delta_kl 
     
-     
+    def get_rho_delta(
+        self,
+    ):
+        rho = self.get_beta(self.spike_logit_rho, self.slab_mean_rho, self.slab_lnvar_rho, self.bias_k_rho, self.bias_d_rho)
+        #log_aa_rho = torch.clamp(torch.mm(z, rho), -10, 10)
+        #aa_rho = torch.exp(log_aa_rho)
+        #rho_kl = self.sparse_kl_loss(self.logit_0_rho, self.lnvar_0_rho, self.spike_logit_rho, self.slab_mean_rho, self.slab_lnvar_rho)
+        
+        delta = self.get_beta(self.spike_logit_delta, self.slab_mean_delta, self.slab_lnvar_delta, self.bias_k_delta, self.bias_d_delta)
+        #log_aa_delta = torch.clamp(torch.mm(z, delta), -10, 10)
+        #aa_delta = torch.exp(log_aa_delta)
+        #delta_kl = self.sparse_kl_loss(self.logit_0_delta, self.lnvar_0_delta, self.spike_logit_delta, self.slab_mean_delta, self.slab_lnvar_delta)
+        
+        return rho, delta 
+    
     def get_beta(self, 
         spike_logit: torch.Tensor,
         slab_mean: torch.Tensor, 
