@@ -1611,6 +1611,78 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         print(f'Deterministic: {deterministic}')
         return latent_z
     
+    
+    @torch.no_grad()
+    def get_parameters(
+        self,
+        save_dir = None, 
+        overwrite = False,
+    ) -> List[np.ndarray]:
+        """return the spike logit, slab mean, slab lnvar for rho and delta"""
+        
+        self.module.eval()
+        decoder = self.module.decoder
+        
+        
+        if not os.path.exists(os.path.join(save_dir,"model_parameters")) or overwrite:
+            os.makedirs(os.path.join(save_dir,"model_parameters"), exist_ok=overwrite)
+            
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "spike_logit_delta.txt"
+            ), decoder.spike_logit_delta.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "spike_logit_rho.txt"
+            ), decoder.spike_logit_rho.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_mean_delta.txt"
+            ), decoder.slab_mean_delta.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_mean_rho.txt"
+            ), decoder.slab_mean_rho.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_lnvar_delta.txt"
+            ), decoder.slab_lnvar_delta.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_lnvar_rho.txt"
+            ), decoder.slab_lnvar_rho.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_gene_delta.txt"
+            ), decoder.bias_d_delta.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_gene_rho.txt"
+            ), decoder.bias_d_rho.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_topic_delta.txt"
+            ), decoder.bias_k_delta.cpu().numpy())
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_topic_rho.txt"
+            ), decoder.bias_k_rho.cpu().numpy())
+        
+        '''return(decoder.spike_logit_delta.cpu().numpy(),
+            decoder.spike_logit_rho.cpu().numpy(),
+
+            decoder.slab_mean_delta.cpu().numpy(),
+            decoder.slab_mean_rho.cpu().numpy(),
+            
+            decoder.slab_lnvar_delta.cpu().numpy(),
+            decoder.slab_lnvar_rho.cpu().numpy(),
+            
+            decoder.bias_d_delta.cpu().numpy(),
+            decoder.bias_d_rho.cpu().numpy(), 
+            
+            decoder.bias_k_delta.cpu().numpy(), 
+            decoder.bias_k_rho.cpu().numpy(),
+        )'''
+        
     @torch.no_grad()
     def get_weights(
         self,
