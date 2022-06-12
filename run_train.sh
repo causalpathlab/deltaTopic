@@ -16,6 +16,9 @@ source $HOME/DisNet/bin/activate
 
 # June 11th
 ## nLV = 16, 8, 4
-python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 16 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add &
-python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 8 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add 
-python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 4 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 16 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add &
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 8 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add 
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 4 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
+
+# June 12th
+python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 12 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
