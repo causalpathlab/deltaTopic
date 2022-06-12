@@ -21,7 +21,7 @@ args = parser.parse_args()
 SaveFolderPath = args.SavePath
 print(SaveFolderPath)
 #model = TotalDeltaETM.load(SaveFolderPath)
-SaveFolderPath = "models/BDeltaTopic_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1.0"
+#SaveFolderPath = "models/BDeltaTopic_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1.0"
 model = BDeltaTopic.load(SaveFolderPath)
 ## get model parameters
 
