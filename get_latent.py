@@ -5,7 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import argparse
 import glob
-#%% get LVs for TotalDeltaETM
+#%% get LVs for model
 from DeltaETM_model import TotalDeltaETM, BDeltaTopic
 
 
@@ -15,19 +15,20 @@ parser = argparse.ArgumentParser(description='Parameters for NN')
 
 parser.add_argument('--SavePath', type=str, help='path to save')
 parser.add_argument("--plotUMAP", default=False, action="store_true")
+parser.add_argument("--plot_gene_space", default=False, action="store_true")
 
 args = parser.parse_args()
 SaveFolderPath = args.SavePath
-#SaveFolderPath = f"models/TotalDeltaETM_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}"
 print(SaveFolderPath)
-
-
 #model = TotalDeltaETM.load(SaveFolderPath)
-SaveFolderPath = "models/BDeltaTopic_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1"
+SaveFolderPath = "models/BDeltaTopic_allgenes_ep2000_nlv32_bs1024_combinebyadd_lr0.01_train_size1.0"
 model = BDeltaTopic.load(SaveFolderPath)
+## get model parameters
+
+model.get_parameters(save_dir = SaveFolderPath, overwrite = False)
+
 topics_np = model.get_latent_representation(deterministic=True)
 #topics_untran_np = model.get_latent_representation(output_softmax_z=False)
-
 
 topics_df = pd.DataFrame(topics_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_np.shape[1])])
 topics_df.to_csv(os.path.join(SaveFolderPath,"topics.csv"))
@@ -74,20 +75,20 @@ if args.plotUMAP:
     plt.savefig(os.path.join(SaveFolderPath,'UMAP_topic_by_tumor_sample.png'),bbox_inches='tight')
 
     #%% plot UMAP on topic space untransformed
-    model.adata.obs['sample_id_cat'] = model.adata.obs['sample_id'].astype('category',copy=False)
-    sc.pp.neighbors(model.adata, use_rep="X_DeltaETM_topic_untran")
-    sc.tl.umap(model.adata)
+    #model.adata.obs['sample_id_cat'] = model.adata.obs['sample_id'].astype('category',copy=False)
+    #sc.pp.neighbors(model.adata, use_rep="X_DeltaETM_topic_untran")
+    #sc.tl.umap(model.adata)
     # Save UMAP to custom .obsm field.
-    model.adata.obsm["topic_space_umap_untran"] = model.adata.obsm["X_umap"].copy()
-    fig = plt.figure()
-    sc.pl.embedding(model.adata, "topic_space_umap_untran", color = [f"DeltaETM_topic_untran_{i}" for i in range(topics_np.shape[1])], frameon=False)
-    plt.savefig(os.path.join(SaveFolderPath,'UMAP_topic_untran.png'))
+    #model.adata.obsm["topic_space_umap_untran"] = model.adata.obsm["X_umap"].copy()
+    #fig = plt.figure()
+    #sc.pl.embedding(model.adata, "topic_space_umap_untran", color = [f"DeltaETM_topic_untran_{i}" for i in range(topics_np.shape[1])], frameon=False)
+    #plt.savefig(os.path.join(SaveFolderPath,'UMAP_topic_untran.png'))
 
-    sc.pl.embedding(model.adata, "topic_space_umap_untran", color = ['tumor_type','sample_id_cat'], frameon=False)
-    plt.savefig(os.patPh.join(SaveFolderPath,'UMAP_topic_by_tumor_sample_untran.png'),bbox_inches='tight')
+    #sc.pl.embedding(model.adata, "topic_space_umap_untran", color = ['tumor_type','sample_id_cat'], frameon=False)
+    #plt.savefig(os.patPh.join(SaveFolderPath,'UMAP_topic_by_tumor_sample_untran.png'),bbox_inches='tight')
 
 
-    if plot_gene_space:
+    if args.plot_gene_space:
         
         # plot UMAP on spliced count space 
         sc.pp.neighbors(model.adata, n_pcs = 10, use_rep="X")
