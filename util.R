@@ -33,7 +33,7 @@ row.order <- function(mat) {
 
 col.order <- function(pair.tab, .ro, ret.tab = FALSE) {
 
-    M = .dt %>%
+    M = pair.tab %>%
         dplyr::select(row, col, weight) %>%
         dplyr::mutate(row = factor(row, .ro)) %>%
         tidyr::spread(key = col, value = weight, fill = 0)
