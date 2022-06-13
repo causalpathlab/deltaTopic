@@ -1,0 +1,261 @@
+---
+title: "Bayesian delta Topic"
+author: "Yichen Zhang"
+output:
+  html_document:
+    self_contained: true
+    keep_md: true
+params:
+  Save_Path: models/BDeltaTopic_allgenes_ep2000_nlv8_bs1024_combinebyadd_lr0.01_train_size1.0
+---
+```{r}
+source("util.R")
+library(ggplot2)
+library(data.table)
+library(magrittr)
+
+library(reshape2)
+library(dplyr)
+library(patchwork)
+knitr::opts_chunk$set(results="asis")
+```
+
+```{r}
+Save_Path <- params$Save_Path
+```
+
+
+```{r}
+.genes <- fread(paste0(Save_Path, "/genes.csv"), header = TRUE)
+setnames(.genes, "V1", "gene")
+
+readDT_melt <- function(Save_Path, parameter, taget){
+    readpath <- paste0(Save_Path, "/model_parameters/", paste0(parameter, "_", target, ".txt"))
+    a <- fread(readpath, col.names = .genes$gene)
+    a[, Var1 := rownames(a)] %>% reshape2::melt(id.vars = "Var1", value.name = parameter)
+}
+```
+
+
+## delta
+```{r fig.width=8, fig.height=6}
+target <- 'delta'
+.db <- readxl::read_xls("data/cell_type_markers/cell_markers_Peng2019.xls")
+setnames(.db, "Gene", "gene")
+setnames(.db, "Cell type", "cell type")
+.db <- as.data.table(.db)
+.db <- .db[`p value` <=0, tail(.SD, 50), by = `cell type`]
+
+param.dt <- readDT_melt(Save_Path, "slab_mean", target) %>%
+    merge(readDT_melt(Save_Path, "slab_lnvar", target), allow.cartesian = TRUE) %>%
+    merge(readDT_melt(Save_Path, "spike_logit", target), allow.cartesian = TRUE) %>%
+    merge(.genes, by.x = "variable", by.y = "gene", allow.cartesian = TRUE)
+
+.show.param <-
+    param.dt[variable %in% .db$gene] %>%
+    mutate(pip = 1/(1 + exp(-spike_logit))) %>% 
+    mutate(row = `Var1`, col = `variable`, weight = slab_mean * pip) %>%
+    mutate(weight = pmin(pmax(weight, -3), 3)) %>% 
+    order.pair(ret.tab = TRUE) %>%
+    as.data.table
+
+.show.db <-
+    .db[gene %in% param.dt$variable] %>%
+    mutate(row = gene, col = `cell type`, weight = 1) %>%
+    col.order(.ro = sort(unique(.show.param$col)), ret.tab=TRUE) %>%
+    mutate(gene = `row`, `cell type` = `col`)
+
+hist.dt <- param.dt[slab_mean > 0, .(.N),
+                    by = .(spike_logit=round(spike_logit*3)/3, topic = paste0("topic ", Var1))]
+
+plt <-
+    ggplot(hist.dt, aes(spike_logit, log10(`N`))) +
+    facet_wrap(~topic) +
+    theme_classic() +
+    scale_x_continuous("logit (posterior inclusion probability)") +
+    geom_bar(stat = "identity")
+print(plt)
+.ggsave(paste0(Save_Path,"/figures/sparse_logit_",target,".pdf"), plot=plt,
+        width=8, height=6)
+```
+
+```{r fig.width=9, fig.height=5}
+theme_set(theme_classic() +
+          theme(legend.key.height = unit(.2, "lines")) +
+          theme(axis.text.x = element_blank()) +
+          theme(axis.ticks.x = element_blank()))
+
+p1 <-
+    ggplot(.show.param, aes(col, row, fill = weight)) +
+    theme(legend.position = "top") +
+    geom_tile() + xlab("genes") + ylab("topics") +
+    scale_fill_distiller("topic-specific\ngene activities", palette = "RdBu", direction=-1)
+
+p2 <-
+    ggplot(.show.db, aes(`gene`, `cell type`)) +
+    ggtitle("marker genes") +
+    geom_tile() + xlab("genes")
+
+plt <- p1/p2
+print(plt)
+.ggsave(paste0(Save_Path,"/figures/sparse_marker_genes_",target,".pdf"), plot=plt,
+        width=9, height=5)
+```
+
+## rho 
+```{r fig.width=8, fig.height=6}
+target <- "rho"
+.db = readxl::read_xls("data/cell_type_markers/cell_markers_Peng2019.xls")
+setnames(.db, "Gene", "gene")
+setnames(.db, "Cell type", "cell type")
+.db <- as.data.table(.db)
+.db <- .db[`p value` <=0, tail(.SD, 50) ,by = `cell type`]
+
+param.dt <- readDT_melt(Save_Path, "slab_mean", target) %>%
+    merge(readDT_melt(Save_Path, "slab_lnvar", target), allow.cartesian = TRUE) %>%
+    merge(readDT_melt(Save_Path, "spike_logit", target), allow.cartesian = TRUE) %>%
+    merge(.genes, by.x = "variable", by.y = "gene", allow.cartesian = TRUE)
+
+.show.param <-
+    param.dt[variable %in% .db$gene] %>%
+    mutate(pip = 1/(1 + exp(-spike_logit))) %>% 
+    mutate(row = `Var1`, col = `variable`, weight = slab_mean * pip) %>%
+    mutate(weight = pmin(pmax(weight, -3), 3)) %>% 
+    order.pair(ret.tab = TRUE) %>%
+    as.data.table
+
+.show.db <-
+    .db[gene %in% param.dt$variable] %>%
+    mutate(row = gene, col = `cell type`, weight = 1) %>%
+    col.order(.ro = sort(unique(.show.param$col)), ret.tab=TRUE) %>%
+    mutate(gene = `row`, `cell type` = `col`)
+
+hist.dt <- param.dt[slab_mean > 0, .(.N),
+                    by = .(spike_logit=round(spike_logit*3)/3, topic = paste0("topic ", Var1))]
+
+plt <-
+    ggplot(hist.dt, aes(spike_logit, log10(`N`))) +
+    facet_wrap(~topic) +
+    theme_classic() +
+    scale_x_continuous("logit (posterior inclusion probability)") +
+    geom_bar(stat = "identity")
+print(plt)
+.ggsave(paste0(Save_Path,"/figures/sparse_logit_",target,".pdf"), plot=plt,
+        width=8, height=6)
+
+```
+
+```{r fig.width=9, fig.height=5}
+theme_set(theme_classic() +
+          theme(legend.key.height = unit(.2, "lines")) +
+          theme(axis.text.x = element_blank()) +
+          theme(axis.ticks.x = element_blank()))
+
+p1 <-
+    ggplot(.show.param, aes(col, row, fill = weight)) +
+    theme(legend.position = "top") +
+    geom_tile() + xlab("genes") + ylab("topics") +
+    scale_fill_distiller("topic-specific\ngene activities", palette = "RdBu", direction=-1)
+
+p2 <-
+    ggplot(.show.db, aes(`gene`, `cell type`)) +
+    ggtitle("marker genes") +
+    geom_tile() + xlab("genes")
+
+plt <- p1/p2
+print(plt)
+
+.ggsave(paste0(Save_Path,"/figures/sparse_marker_genes_",target,".pdf"), plot=plt,
+        width=9, height=5)        
+```
+
+## UMAP cell types
+```{r fig.width=5, fig.height=4}
+topics <- fread(paste0(Save_Path, "/topics.csv"))
+topics <- topics[, -1] 
+.umap <- uwot::umap(topics,
+                    fast_sgd = TRUE,
+                    n_threads = 16,
+                    min_dist = 0,
+                    spread = 5,
+                    metric = "cosine",
+                    n_neighbors = 50)
+
+.dt <- data.table(.umap, k = apply(t(topics), 2, which.max))
+K <- ncol(topics)
+
+plt <-
+    ggplot(.dt, aes(V1, V2, fill=factor(k, 1:K))) +
+    xlab("umap1") + ylab("umap2") +
+    geom_point(stroke=0, pch=21, size = 1) + 
+    scale_fill_brewer("topic", palette="Paired")
+
+print(plt)
+.ggsave(paste0(Save_Path,"/figures/sparse_umap.pdf"), plot=plt,
+        width=5, height=4)
+```
+
+## structure plot
+```{r fig.width=7, fig.height=3}
+topics <- fread(paste0(Save_Path, "/topics.csv"))
+K <- ncol(topics)-1
+colnames(topics) <- c("V1", 1:K)
+
+.dt <- as.data.table(reshape2::melt(topics, id.vars=1)) %>%
+    mutate(col = V1, row = variable, weight = value) %>%
+    col.order(rev(1:K), ret.tab=TRUE) %>%
+    as.data.table
+
+plt <- 
+    ggplot(.dt, aes(x=`col`, y=`weight`, fill=as.factor(`variable`), color=as.factor(`variable`))) +
+    xlab("cells") + ylab("topic proportion") +
+    theme(legend.position = "bottom") +
+    geom_bar(stat="identity", position="stack", size=0) +
+    scale_fill_brewer("topic", palette="Paired") +
+    scale_color_brewer("topic", palette="Paired")
+print(plt)
+.ggsave(paste0(Save_Path, "/figures/sparse_structure.pdf"), plot=plt,
+        width=7, height=3)
+```
+
+## check bias terms
+```{r fig.width=7, fig.height=3}
+bias_gene_delta <- fread(paste0(Save_Path, "/model_parameters/bias_gene_", "delta", ".txt"))
+names(bias_gene_delta) <- .genes$gene
+bias_gene_delta[,param := "delta"]
+
+bias_gene_rho <- fread(paste0(Save_Path, "/model_parameters/bias_gene_", "rho", ".txt"))
+names(bias_gene_rho) <- .genes$gene
+bias_gene_rho[,param := "rho"]
+
+bias_topic_delta <- fread(paste0(Save_Path, "/model_parameters/bias_topic_", "delta", ".txt"))
+bias_topic_delta[,param := "delta"]
+bias_topic_delta[,topic := paste0("topic", 1:nrow(bias_topic_delta))]
+setnames(bias_topic_delta, "V1", "bias")
+
+bias_topic_rho <- fread(paste0(Save_Path, "/model_parameters/bias_topic_", "rho", ".txt"))
+bias_topic_rho[,param := "rho"]
+bias_topic_rho[,topic := paste0("topic", 1:nrow(bias_topic_rho))]
+setnames(bias_topic_rho, "V1", "bias")
+
+bias_gene <- melt(bias_gene_delta, variable.name = "gene",value.name = "bias", id.vars = "param") %>%
+            rbind(melt(bias_gene_rho, variable.name = "gene",value.name = "bias", id.vars = "param"))
+
+bias_topic <- rbind(bias_topic_delta, bias_topic_rho)
+            
+plt1 <- ggplot(bias_gene, aes(x = as.factor(gene), y = bias, fill = param))+ 
+    geom_bar(stat="identity", position="stack", size=0)+
+    geom_hline(yintercept=0, linetype="dashed", color = "red")+ 
+    xlab("gene") + ylab("bias") 
+
+plt2 <- ggplot(bias_topic, aes(x = as.factor(topic), y = bias, fill = param))+ 
+    geom_bar(stat="identity", position="stack", size=0)+
+    geom_hline(yintercept=0, linetype="dashed", color = "red")+ 
+    xlab("topic") + ylab("bias") 
+
+plt <- plt1/plt2
+
+print(plt)
+.ggsave(paste0(Save_Path, "/figures/bias_check.pdf"), plot=plt,
+        width=7, height=3)
+```
