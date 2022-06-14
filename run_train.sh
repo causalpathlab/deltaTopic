@@ -21,4 +21,10 @@ source $HOME/DisNet/bin/activate
 #python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 4 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
 
 # June 12th
-python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 12 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 12 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add
+
+# correct softmax and scaling 
+python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 0 --train_size 1 --combine_method add &
+python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 16 --bs 1024 --use_gpu 0 --train_size 1 --combine_method add &
+python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 8 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add & 
+python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 4 --bs 1024 --use_gpu 1 --train_size 1 --combine_method add &
