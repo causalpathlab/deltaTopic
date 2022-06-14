@@ -15,14 +15,14 @@ parser.add_argument('--EPOCHS', type=int, help='EPOCHS', default=2000)
 parser.add_argument('--lr', type=float, help='learning_rate', default=1e-2)
 parser.add_argument('--use_gpu', type=int, help='which GPU to use', default=0)
 parser.add_argument('--nLV', type=int, help='User specified nLV', default=32)
-parser.add_argument('--bs', type=int, help='Batch size', default=512)
+parser.add_argument('--bs', type=int, help='Batch size', default=1024)
 parser.add_argument('--combine_method', type=str, help='Pathway type', default='add')
 parser.add_argument('--train_size', type=float, help='training size', default=1)
 args = parser.parse_args()
 # pass args to wand.config
 wandb.config.update(args)
 #%%
-savefile_name = f"models/BDeltaTopic_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}"
+savefile_name = f"models/BDeltaTopic_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}_v1"
 print(savefile_name)
 DataDIR = os.path.join(os.path.expanduser('~'), "projects/data")
 adata_spliced = scvi.data.read_h5ad(os.path.join(DataDIR,'CRA001160/final_CRA001160_spliced_allgenes.h5ad'))

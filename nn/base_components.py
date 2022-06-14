@@ -559,6 +559,7 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         self,
         z: torch.Tensor,
     ):
+        theta = self.soft_max(z)
         rho = self.get_beta(self.spike_logit_rho, self.slab_mean_rho, self.slab_lnvar_rho, self.bias_k_rho, self.bias_d_rho)
         #log_aa_rho = torch.clamp(torch.mm(z, rho), -10, 10)
         #aa_rho = torch.exp(log_aa_rho)
@@ -569,7 +570,7 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         #aa_delta = torch.exp(log_aa_delta)
         delta_kl = self.sparse_kl_loss(self.logit_0_delta, self.lnvar_0_delta, self.spike_logit_delta, self.slab_mean_delta, self.slab_lnvar_delta)
         
-        return rho, delta, rho_kl, delta_kl 
+        return rho, delta, rho_kl, delta_kl, theta 
     
     def get_rho_delta(
         self,

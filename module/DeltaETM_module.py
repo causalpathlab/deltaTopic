@@ -1027,9 +1027,9 @@ class BayesianETM_module(BaseModuleClass):
     @auto_move_data
     def generative(self, z) -> dict:
 
-        rho, delta, rho_kl, delta_kl  = self.decoder(z)
+        rho, delta, rho_kl, delta_kl, theta  = self.decoder(z)
 
-        return dict(rho = rho, delta = delta, rho_kl = rho_kl, delta_kl = delta_kl)
+        return dict(rho = rho, delta = delta, rho_kl = rho_kl, delta_kl = delta_kl, theta = theta)
     
     # this is for the purpose of computing the integrated gradient, output z but not dict
     def get_latent_representation(
@@ -1046,7 +1046,7 @@ class BayesianETM_module(BaseModuleClass):
             z = inference_out["z"]
         if output_softmax_z:
             generative_outputs = self.generative(z)
-            z = generative_outputs["hh"]      
+            z = generative_outputs["theta"]      
         return z
 
     def get_reconstruction_loss(
@@ -1071,15 +1071,15 @@ class BayesianETM_module(BaseModuleClass):
         """
         inference_out = self.inference(x, y)
         z = inference_out["z"]
-
         gen_out = self.generative(z)
-        
+        theta = gen_out["theta"]
+               
         rho = gen_out["rho"]
-        log_aa_spliced = torch.clamp(torch.mm(z, rho), -10, 10)
+        log_aa_spliced = torch.clamp(torch.mm(theta, rho), -10, 10)
         aa_spliced = torch.exp(log_aa_spliced)
         
         delta = gen_out["delta"]
-        log_aa_unspliced = torch.clamp(torch.mm(z, rho + delta), -10, 10)
+        log_aa_unspliced = torch.clamp(torch.mm(theta, rho + delta), -10, 10)
         aa_unspliced = torch.exp(log_aa_unspliced)
         
         reconstruction_loss_spliced = -self.dir_llik(x, aa_spliced)
@@ -1122,6 +1122,8 @@ class BayesianETM_module(BaseModuleClass):
         the reconstruction loss and the Kullback divergences
 
         """
+        
+        self.sample_size = 217942
         x = tensors[_CONSTANTS.X_KEY]
         y = tensors[_CONSTANTS.PROTEIN_EXP_KEY]
         qz_m = inference_outputs["qz_m"]
@@ -1141,11 +1143,11 @@ class BayesianETM_module(BaseModuleClass):
         kl_divergence_beta = rho_kl + delta_kl
         kl_local = kl_divergence_z
         reconstruction_loss = reconstruction_loss_spliced + reconstruction_loss_unspliced
-        loss = torch.mean(reconstruction_loss + kl_weight * kl_local + kl_weight_beta * kl_divergence_beta/x.size(0)) * x.size(0)
-
+        #loss = torch.mean(reconstruction_loss + kl_weight * kl_local + kl_weight_beta * kl_divergence_beta/x.size(0)) * x.size(0)
+        loss = torch.mean(reconstruction_loss + kl_weight * kl_local) + kl_weight_beta * kl_divergence_beta/self.sample_size
         return LossRecorder(loss, reconstruction_loss, kl_local,
                             reconstruction_loss_spliced=reconstruction_loss_spliced,
                             reconstruction_loss_unspliced=reconstruction_loss_unspliced, 
-                            kl_beta = kl_divergence_beta, 
-                            kl_rho = rho_kl, 
-                            kl_delta = delta_kl,)
+                            kl_beta = kl_divergence_beta/self.sample_size, 
+                            kl_rho = rho_kl/self.sample_size, 
+                            kl_delta = delta_kl/self.sample_size)
