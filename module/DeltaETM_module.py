@@ -919,6 +919,8 @@ class BayesianETM_module(BaseModuleClass):
         n_labels: int = 0,
         log_variational: bool = True,
         combine_method: str = "concat",
+        pip0_rho: float = 0.1,
+        pip0_delta: float = 0.1,
     ):
         super().__init__()
 
@@ -929,9 +931,10 @@ class BayesianETM_module(BaseModuleClass):
         self.combine_method = combine_method
         self.n_batch = n_batch
         self.n_labels = n_labels
-
         self.log_variational = log_variational
-
+        self.pip0_rho = pip0_rho
+        self.pip0_delta = pip0_delta
+        
         self.z_encoder = TotalMultiMaskedEncoder(
             n_input_list=dim_input_list,
             n_output=self.n_latent,
@@ -945,7 +948,11 @@ class BayesianETM_module(BaseModuleClass):
         )
 
         # TODO: use self.total_genes is dangerous, if we have dfferent sets of genes in spliced and un unspliced
-        self.decoder = BeyesianETMDecoder(self.n_latent , self.total_genes)
+        self.decoder = BeyesianETMDecoder(self.n_latent , 
+                                          self.total_genes, 
+                                          pip0_rho = self.pip0_rho,
+                                          pip0_delta = self.pip0_delta,
+                                        )
 
 
    
@@ -1130,10 +1137,14 @@ class BayesianETM_module(BaseModuleClass):
         kl_local = kl_divergence_z
         reconstruction_loss = reconstruction_loss_spliced + reconstruction_loss_unspliced
         #loss = torch.mean(reconstruction_loss + kl_weight * kl_local + kl_weight_beta * kl_divergence_beta/x.size(0)) * x.size(0)
-        loss = torch.mean(reconstruction_loss + kl_weight * kl_local) + kl_weight_beta * kl_divergence_beta/self.sample_size
+        # v1: downweighting the beta kl by sample size
+        #loss = torch.mean(reconstruction_loss + kl_weight * kl_local) + kl_weight_beta * kl_divergence_beta/self.sample_size
+        # v2: downweighting the beta kl by batch size
+        loss = torch.mean(reconstruction_loss + kl_weight * kl_local) + kl_weight_beta * kl_divergence_beta/x.size(0)
+        
         return LossRecorder(loss, reconstruction_loss, kl_local,
                             reconstruction_loss_spliced=reconstruction_loss_spliced,
                             reconstruction_loss_unspliced=reconstruction_loss_unspliced, 
-                            kl_beta = kl_divergence_beta/self.sample_size, 
-                            kl_rho = rho_kl/self.sample_size, 
-                            kl_delta = delta_kl/self.sample_size)
+                            kl_beta = kl_divergence_beta/x.size(0), 
+                            kl_rho = rho_kl/x.size(0), 
+                            kl_delta = delta_kl/x.size(0))

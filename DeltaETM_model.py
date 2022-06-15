@@ -1412,8 +1412,8 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         adata_seq: AnnData,
         adata_pathway: AnnData = None,
         mask: torch.Tensor = None,
-        n_latent: int = 4,
-        combine_latent: str = 'concat',
+        n_latent: int = 32,
+        combine_latent: str = 'add',
         **model_kwargs,
     ):
         super(BDeltaTopic, self).__init__()
@@ -1454,7 +1454,8 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             "BDeltaTopic with the following params: \nn_latent: {},  n_genes: {}, "
             + "n_batch: {}, combine_latent: {}"
         ).format(n_latent, self.summary_stats["n_vars"], self.summary_stats["n_batch"], combine_latent)
-        self.init_params_ = self._get_init_params(locals())    
+        self.init_params_ = self._get_init_params(locals()) 
+           
         #wandb.watch(self.module.decoder, log_freq=10, log="all")
     def train(
         self,
