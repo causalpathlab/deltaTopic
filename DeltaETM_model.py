@@ -1575,6 +1575,7 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         self,
         adata: AnnData = None,
         deterministic: bool = True,
+        output_softmax_z: bool = True,
         batch_size: int = 128,
     ) -> List[np.ndarray]:
         """
@@ -1586,10 +1587,10 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             List of adata_spliced and adata_unspliced.
         deterministic
             If true, use the mean of the encoder instead of a Gaussian sample.
+        output_softmax_z
+            if true, output probability, otherwise output z.    
         batch_size
             Minibatch size for data loading into model.
-        output_softmax_z
-            If true, return the softmax of the latent space embedding.
         """
         if adata is None:
             adata = self.adata
@@ -1603,12 +1604,12 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
                 sample_batch_unspliced,
                 *_,
             ) = _unpack_tensors(tensors)
-            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic)
+            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic, output_softmax_z=output_softmax_z)
             latent_z.append(z_dict["z"])                
 
         latent_z = torch.cat(latent_z).cpu().detach().numpy()
         
-        print(f'Deterministic: {deterministic}')
+        print(f'Deterministic: {deterministic}, output_softmax_z: {output_softmax_z}' )
         return latent_z
     
     

@@ -26,8 +26,7 @@ model = BDeltaTopic.load(SaveFolderPath)
 ## get model parameters
 
 model.get_parameters(save_dir = SaveFolderPath, overwrite = False)
-
-topics_np = model.get_latent_representation(deterministic=True)
+topics_np = model.get_latent_representation(deterministic=True, output_softmax_z=True)
 #topics_untran_np = model.get_latent_representation(output_softmax_z=False)
 
 topics_df = pd.DataFrame(topics_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_np.shape[1])])

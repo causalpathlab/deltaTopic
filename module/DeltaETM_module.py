@@ -948,50 +948,19 @@ class BayesianETM_module(BaseModuleClass):
         self.decoder = BeyesianETMDecoder(self.n_latent , self.total_genes)
 
 
-    def sample_from_posterior_z(
-        self, 
-        x: torch.Tensor, 
-        y: torch.Tensor, 
-        deterministic: bool = False, 
-    ) -> torch.Tensor:
-        """
-        Sample tensor of latent values from the posterior.
-
-        Parameters
-        ----------
-        x
-            tensor of values with shape ``(batch_size, n_input)``
-        mode
-            head id to use in the encoder
-        deterministic
-            bool - whether to sample or not
-        
-        Returns
-        -------
-        type
-            tensor of shape ``(batch_size, n_latent)``
-
-        """
-    
-        inference_out = self.inference(x, y)
-        if deterministic:
-            z = inference_out["qz_m"]
-        else:
-            z = inference_out["z"]
-  
-        return dict(z=z)
-    
-    #' Dirichlet log-likelihood:
-    #' lgamma(sum a) - lgamma(sum a + x)
-    #' sum lgamma(a + x) - lgamma(a)
-    #' @param xx
-    #' @param aa
-    #' @return log-likelihood
+   
     def dir_llik(self, 
                  xx: torch.Tensor, 
                  aa: torch.Tensor,
     ) -> torch.Tensor:
-        
+        '''
+        # Dirichlet log-likelihood:
+        # lgamma(sum a) - lgamma(sum a + x)
+        # sum lgamma(a + x) - lgamma(a)
+        # @param xx
+        # @param aa
+        # @return log-likelihood
+        '''
         reconstruction_loss = None 
         
         term1 = (torch.lgamma(torch.sum(aa, dim=-1)) -
@@ -1036,7 +1005,7 @@ class BayesianETM_module(BaseModuleClass):
         self, 
         x: torch.Tensor,
         y: torch.Tensor,
-        deterministic: bool = False,
+        deterministic: bool = True,
         output_softmax_z: bool = True, 
     ):
         inference_out = self.inference(x,y)
@@ -1048,6 +1017,23 @@ class BayesianETM_module(BaseModuleClass):
             generative_outputs = self.generative(z)
             z = generative_outputs["theta"]      
         return z
+    
+    def sample_from_posterior_z(
+        self, 
+        x: torch.Tensor,
+        y: torch.Tensor,
+        deterministic: bool = True,
+        output_softmax_z: bool = True, 
+    ):
+        inference_out = self.inference(x,y)
+        if deterministic:
+            z = inference_out["qz_m"]
+        else:
+            z = inference_out["z"]
+        if output_softmax_z:
+            generative_outputs = self.generative(z)
+            z = generative_outputs["theta"]      
+        return dict(z=z)
 
     def get_reconstruction_loss(
         self,
