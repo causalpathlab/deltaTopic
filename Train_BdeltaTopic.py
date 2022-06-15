@@ -16,13 +16,15 @@ parser.add_argument('--lr', type=float, help='learning_rate', default=1e-2)
 parser.add_argument('--use_gpu', type=int, help='which GPU to use', default=0)
 parser.add_argument('--nLV', type=int, help='User specified nLV', default=32)
 parser.add_argument('--bs', type=int, help='Batch size', default=1024)
-parser.add_argument('--combine_method', type=str, help='Pathway type', default='add')
-parser.add_argument('--train_size', type=float, help='training size', default=1)
+parser.add_argument('--combine_method', type=str, help='the way to combine z1 z2', default='add')
+parser.add_argument('--train_size', type=float, help='training size =1, full dataset training', default=1)
+parser.add_argument('--pip0_rho', type=float, help='pip0_rho', default=0.1)
+parser.add_argument('--pip0_delta', type=float, help='pip0_delta', default=0.1)
 args = parser.parse_args()
 # pass args to wand.config
 wandb.config.update(args)
 #%%
-savefile_name = f"models/BDeltaTopic_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}_v1"
+savefile_name = f"models/BDeltaTopic_allgenes_ep{args.EPOCHS}_nlv{args.nLV}_bs{args.bs}_combineby{args.combine_method}_lr{args.lr}_train_size{args.train_size}_pip0rho_{args.pip0_rho}_pip0delta_{args.pip0_delta}v2"
 print(savefile_name)
 DataDIR = os.path.join(os.path.expanduser('~'), "projects/data")
 adata_spliced = scvi.data.read_h5ad(os.path.join(DataDIR,'CRA001160/final_CRA001160_spliced_allgenes.h5ad'))
@@ -36,7 +38,7 @@ setup_anndata(adata_spliced, layer="counts", batch_key="sample_id", protein_expr
 #%%
 # create model
 from DeltaETM_model import BDeltaTopic
-model = BDeltaTopic(adata_spliced, n_latent = args.nLV, combine_latent= args.combine_method)
+model = BDeltaTopic(adata_spliced, n_latent = args.nLV, combine_latent= args.combine_method, pip0_rho=args.pip0_rho, pip0_delta=args.pip0_delta)
 #%%
 # this has to be passed, otherwise pytroch lighting logging won't be passed to wandb
 from pytorch_lightning.loggers import WandbLogger
