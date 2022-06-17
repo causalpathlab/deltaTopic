@@ -164,11 +164,17 @@ class TrainingPlan(pl.LightningModule):
         reconstruction_loss = scvi_loss.reconstruction_loss
         reconstruction_loss_spliced = scvi_loss.reconstruction_loss_spliced
         reconstruction_loss_unspliced = scvi_loss.reconstruction_loss_unspliced
+        kl_beta = scvi_loss.kl_beta
+        kl_rho = scvi_loss.kl_rho
+        kl_delta = scvi_loss.kl_delta
         self.log("validation_loss", scvi_loss.loss, on_epoch=True)
         return {
             "reconstruction_loss_sum": reconstruction_loss.sum(),
             "kl_local_sum": scvi_loss.kl_local.sum(),
             #"kl_global": scvi_loss.kl_global,
+            "kl_beta_sum": kl_beta.sum(),
+            "kl_rho_sum": kl_rho.sum(),
+            "kl_delta_sum": kl_delta.sum(),
             "reconstruction_loss_spliced_sum": reconstruction_loss_spliced.sum(),
             "reconstruction_loss_unspliced_sum": reconstruction_loss_unspliced.sum(),
             "n_obs": reconstruction_loss.shape[0],
@@ -176,13 +182,17 @@ class TrainingPlan(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         """Aggregate validation step information."""
-        n_obs, elbo, rec_loss, kl_local = 0, 0, 0, 0
+        #n_obs, elbo, rec_loss, kl_local = 0, 0, 0, 0
+        n_obs, elbo, rec_loss, kl_local, rec_loss_spliced, rec_loss_unspliced, kl_beta, kl_rho, kl_delta  = 0, 0, 0, 0, 0, 0, 0, 0, 0
         for tensors in outputs:
             elbo += tensors["reconstruction_loss_sum"] + tensors["kl_local_sum"]
             rec_loss += tensors["reconstruction_loss_sum"]
             rec_loss_spliced = tensors['reconstruction_loss_spliced_sum']
             rec_loss_unspliced = tensors['reconstruction_loss_unspliced_sum']
             kl_local += tensors["kl_local_sum"]
+            kl_beta += tensors["kl_beta_sum"]
+            kl_rho += tensors["kl_rho_sum"]
+            kl_delta += tensors["kl_delta_sum"]
             n_obs += tensors["n_obs"]
         # kl global same for each minibatch
         #kl_global = outputs[0]["kl_global"]
@@ -190,6 +200,9 @@ class TrainingPlan(pl.LightningModule):
         self.log("elbo_validation", elbo / n_obs)
         self.log("reconstruction_loss_validation", rec_loss / n_obs)
         self.log("kl_local_validation", kl_local / n_obs)
+        self.log("kl_beta_validation", kl_beta / n_obs)
+        self.log("kl_rho_validation", kl_rho / n_obs)
+        self.log("kl_delta_validation", kl_delta / n_obs)
         self.log("reconstruction_loss_spliced_validation", rec_loss_spliced / n_obs)
         self.log("reconstruction_loss_unspliced_validation", rec_loss_unspliced / n_obs)
         #self.log("kl_global_validation", kl_global)
