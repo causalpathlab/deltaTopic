@@ -5,6 +5,7 @@ from scvi.data import setup_anndata
 
 import argparse
 from scipy.sparse import csr_matrix
+import pandas as pd
 #%%
 import wandb
 wandb.login()
@@ -50,7 +51,7 @@ model_kwargs = {"lr": args.lr, 'use_gpu':args.use_gpu, 'train_size':args.train_s
 print(args)
 model.train(
     args.EPOCHS, 
-    #check_val_every_n_epoch=5,
+    check_val_every_n_epoch=1,
     batch_size=args.bs,
     logger = wandb_logger,
     n_epochs_kl_warmup = 400,
@@ -61,4 +62,23 @@ model.train(
 model.save(savefile_name, overwrite=True, save_anndata=True)
 os.mkdir(os.path.join(savefile_name, "figures"))
 print(f"Model saved to {savefile_name}")
-########
+#%%
+print("getting latent representation and rho and delta weight matrix")
+# get latent representation, gene symbols, and cell notations
+model.get_parameters(save_dir = savefile_name, overwrite = False)
+topics_np = model.get_latent_representation(deterministic=True, output_softmax_z=True)
+
+topics_df = pd.DataFrame(topics_np, index= model.adata.obs.index, columns = ['topic_' + str(j) for j in range(topics_np.shape[1])])
+topics_df.to_csv(os.path.join(savefile_name,"topics.csv"))
+
+model.adata.obs[['sample_id','tumor_type','sex']].to_csv(os.path.join(savefile_name,"samples.csv"))
+model.adata.var[['unique_gene_id']].to_csv(os.path.join(savefile_name,"genes.csv"))
+
+# get the weight matrix
+delta, rho = model.get_weights()
+
+rho_df = pd.DataFrame(rho, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
+rho_df.to_csv(os.path.join(savefile_name,"rho_weights.csv"))
+
+delta_df = pd.DataFrame(delta, index = ['topic_' + str(j) for j in range(topics_np.shape[1])], columns = model.adata.var.index).T
+delta_df.to_csv(os.path.join(savefile_name,"delta_weights.csv"))
