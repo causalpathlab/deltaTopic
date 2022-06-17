@@ -848,11 +848,11 @@ class ETM_module(BaseModuleClass):
         reconstruction_loss_spliced, reconstruction_loss_unspliced = self.get_reconstruction_loss(x, y)
 
         # KL Divergence
-        mean = torch.zeros_like(qz_m)
+        mean = torch.zeros_like(qz_m) # [batzch size, dim_laten]
         scale = torch.ones_like(qz_v)
         kl_divergence_z = kl(Normal(qz_m, torch.sqrt(qz_v)), Normal(mean, scale)).sum(
             dim=1
-        )
+        ) #[batch size, dim_latent] --> [batch size]
 
         kl_local = kl_divergence_z
         reconstruction_loss = reconstruction_loss_spliced + reconstruction_loss_unspliced
@@ -957,8 +957,6 @@ class BayesianETM_module(BaseModuleClass):
                                           pip0_delta = self.pip0_delta,
                                         )
 
-
-   
     def dir_llik(self, 
                  xx: torch.Tensor, 
                  aa: torch.Tensor,
@@ -967,20 +965,20 @@ class BayesianETM_module(BaseModuleClass):
         # Dirichlet log-likelihood:
         # lgamma(sum a) - lgamma(sum a + x)
         # sum lgamma(a + x) - lgamma(a)
-        # @param xx
-        # @param aa
+        # @param xx [batch_size, n_genes]
+        # @param aa [batch_size, n_genes]
         # @return log-likelihood
         '''
         reconstruction_loss = None 
         
         term1 = (torch.lgamma(torch.sum(aa, dim=-1)) -
-                torch.lgamma(torch.sum(aa + xx, dim=-1)))
+                torch.lgamma(torch.sum(aa + xx, dim=-1))) #[n_batch]
         term2 = torch.sum(torch.where(xx > 0,
                             torch.lgamma(aa + xx) -
                             torch.lgamma(aa),
                             torch.zeros_like(xx)),
-                            dim=-1)
-        reconstruction_loss = term1 + term2
+                            dim=-1) #[n_batch
+        reconstruction_loss = term1 + term2 #[n_batch
         return reconstruction_loss
 
 
@@ -1010,24 +1008,6 @@ class BayesianETM_module(BaseModuleClass):
 
         return dict(rho = rho, delta = delta, rho_kl = rho_kl, delta_kl = delta_kl, theta = theta)
     
-    # this is for the purpose of computing the integrated gradient, output z but not dict
-    def get_latent_representation(
-        self, 
-        x: torch.Tensor,
-        y: torch.Tensor,
-        deterministic: bool = True,
-        output_softmax_z: bool = True, 
-    ):
-        inference_out = self.inference(x,y)
-        if deterministic:
-            z = inference_out["qz_m"]
-        else:
-            z = inference_out["z"]
-        if output_softmax_z:
-            generative_outputs = self.generative(z)
-            z = generative_outputs["theta"]      
-        return z
-    
     def sample_from_posterior_z(
         self, 
         x: torch.Tensor,
@@ -1051,7 +1031,7 @@ class BayesianETM_module(BaseModuleClass):
         y: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Returns the tensor of scaled frequencies of expression.
+        Returns the 
 
         Parameters
         ----------
@@ -1127,15 +1107,16 @@ class BayesianETM_module(BaseModuleClass):
         rho_kl = generative_outputs["rho_kl"]
         delta_kl = generative_outputs["delta_kl"]
         
+        # [batch_size]
         reconstruction_loss_spliced, reconstruction_loss_unspliced = self.get_reconstruction_loss(x, y)
 
-        # KL Divergence
+        # KL Divergence for z [batch_size]
         mean = torch.zeros_like(qz_m)
         scale = torch.ones_like(qz_v)
         kl_divergence_z = kl(Normal(qz_m, torch.sqrt(qz_v)), Normal(mean, scale)).sum(
             dim=1
-        )
-
+        ) # suming over all the latent dimensinos
+        # kl_divergence for beta, rho_kl, tensor of torch.size([]) <- torch.sum([N_topics, N_genes])
         kl_divergence_beta = rho_kl + delta_kl
         kl_local = kl_divergence_z
         reconstruction_loss = reconstruction_loss_spliced + reconstruction_loss_unspliced

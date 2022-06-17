@@ -617,7 +617,7 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         sq_term = torch.exp(-lnvar_0) * (torch.square(slab_mean) + torch.exp(slab_lnvar))
         kl_g = -0.5 * (1. + slab_lnvar - lnvar_0 - sq_term)
         ## Combine both logit and Gaussian KL
-        return torch.sum(kl_pip + pip_hat * kl_g)
+        return torch.sum(kl_pip + pip_hat * kl_g) # return a number sum over [N_topics, N_genes]
         
               
         
