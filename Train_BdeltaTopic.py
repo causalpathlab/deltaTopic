@@ -59,5 +59,6 @@ model.train(
     )
 #%%
 model.save(savefile_name, overwrite=True, save_anndata=True)
+os.mkdir(os.path.join(savefile_name, "figures"))
 print(f"Model saved to {savefile_name}")
 ########
