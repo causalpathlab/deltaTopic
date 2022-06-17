@@ -1567,6 +1567,7 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             max_epochs=max_epochs,
             use_gpu=use_gpu,
             early_stopping=early_stopping,
+            check_val_every_n_epoch=check_val_every_n_epoch,
             **kwargs,
         )
         return runner()
