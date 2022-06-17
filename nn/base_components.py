@@ -454,6 +454,64 @@ class TotalMultiMaskedEncoder(nn.Module):
 
         return q_m, q_v, latent
 
+class TotalSingleMaskedEncoder(nn.Module):
+    """
+    Maksed latent encoder with one input heads
+    Options to incorporate categorical variables as one-hot vectors
+    """
+    def __init__(
+        self,
+        n_input: int,
+        n_output: int,
+        mask: torch.Tensor = None,
+        mask_first: bool = True,
+        n_hidden: int = 128,
+        n_layers_individual: int = 1,
+        n_layers_shared: int = 2,
+        n_cat_list: Iterable[int] = None,
+        dropout_rate: float = 0.1,
+        use_batch_norm: bool = True,
+        log_variational: bool = True,
+    ):
+        super().__init__()
+        self.log_variational = log_variational
+        self.encoder1 = MaskedLinearLayers(
+                    n_in=n_input,
+                    n_out=n_hidden,
+                    n_cat_list=n_cat_list,
+                    mask=mask,
+                    mask_first=mask_first,
+                    n_layers=n_layers_individual,
+                    n_hidden=n_hidden,
+                    dropout_rate=dropout_rate,
+                    use_batch_norm=use_batch_norm,
+                )
+        
+        self.encoder2 = FCLayers(
+            n_in=n_hidden,
+            n_out=n_hidden,
+            n_cat_list=n_cat_list,
+            n_layers=n_layers_shared,
+            n_hidden=n_hidden,
+            dropout_rate=dropout_rate,
+        )
+
+        self.mean_encoder = nn.Linear(n_hidden, n_output)
+        self.var_encoder = nn.Linear(n_hidden, n_output)
+
+    def forward(self, x: torch.Tensor, *cat_list: int):
+        
+        if self.log_variational:
+            x_ = torch.log(1 + x)
+    
+        q = self.encoder1(x_, *cat_list)    
+        q = self.encoder2(q, *cat_list)
+        q_m = self.mean_encoder(q)
+        q_v = torch.exp(torch.clamp(self.var_encoder(q), -4.0, 4.0)/2.)
+        latent = reparameterize_gaussian(q_m, q_v)
+
+        return q_m, q_v, latent
+
 class TotalDeltaETMDecoder(nn.Module):
     """
     The decoder for DeltaETM model
@@ -505,7 +563,7 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
        
 class BeyesianETMDecoder(nn.Module):
     """
-    The decoder for DeltaETM model
+    The decoder for DeltaTopic model
     - Model the topic specific post-transcription factor for each gene between spliced and unplisced transcripts 
 
     Testing script:
@@ -619,8 +677,107 @@ pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
         ## Combine both logit and Gaussian KL
         return torch.sum(kl_pip + pip_hat * kl_g) # return a number sum over [N_topics, N_genes]
         
-              
-        
+                      
+class BeyesianETMDecoder_rho(nn.Module):
+    """
+    The decoder for DeltaETM model
+    - Model the topic specific post-transcription factor for each gene between spliced and unplisced transcripts 
 
+    Testing script:
+    import torch
+    from nn.base_components import DeltaETMDecoder
+    test_decoder = DeltaETMDecoder(n_input=10, n_output=100)
+    input = torch.randn(2, 10) # batch_size 2, 10 LVs
+    output = test_decoder(input, 0)
+
+    log_beta = test_decoder.beta(test_decoder.rho.expand([test_decoder.n_input,-1]))
+    hh = test_decoder.hid(input)
+    pr = torch.mm(torch.exp(hh),torch.exp(log_beta))
+
+    """
+    def __init__(
+        self,
+        n_input: int,
+        n_output: int,
+        pip0 = 0.1,
+        v0 = 1,
+    ):
+        super().__init__()
+        self.n_input = n_input # topics
+        self.n_output = n_output # genes
+        
+        # for shared effect（rho）
+        self.logit_0 = nn.Parameter(torch.logit(torch.ones(1)* pip0, eps=1e-6), requires_grad = False)
+        self.lnvar_0 = nn.Parameter(torch.log(torch.ones(1) * v0), requires_grad = False)
+        self.bias_k = nn.Parameter(torch.zeros(n_input, 1))
+        self.bias_d = nn.Parameter(torch.zeros(1, n_output))
+        self.slab_mean = nn.Parameter(torch.randn(n_input, n_output) * torch.sqrt(torch.ones(1) * v0))
+        self.slab_lnvar = nn.Parameter(torch.ones(n_input, n_output) * torch.log(torch.ones(1) * v0))
+        self.spike_logit = nn.Parameter(torch.zeros(n_input, n_output) * self.logit_0)
+
+        # Log softmax operations
+        self.log_softmax = nn.LogSoftmax(dim=-1)
+    
+    
+    def forward(
+        self,
+        z: torch.Tensor,
+    ):
+        theta = self.soft_max(z)
+        rho = self.get_beta(self.spike_logit, self.slab_mean, self.slab_lnvar, self.bias_k, self.bias_d)
+        rho_kl = self.sparse_kl_loss(self.logit_0, self.lnvar_0, self.spike_logit, self.slab_mean, self.slab_lnvar)
+        
+        return rho, rho_kl, theta 
+    
+    def get_rho(
+        self,
+    ):
+        rho = self.get_beta(self.spike_logit, self.slab_mean, self.slab_lnvar, self.bias_k, self.bias_d)
+        
+        return rho
+    
+    def get_beta(self, 
+        spike_logit: torch.Tensor,
+        slab_mean: torch.Tensor, 
+        slab_lnvar: torch.Tensor,
+        bias_k: torch.Tensor, 
+        bias_d: torch.Tensor,
+    ): 
+        pip = torch.sigmoid(spike_logit)
+        mean = slab_mean * pip
+        var = pip * (1 - pip) * torch.square(slab_mean)
+        var = var + pip * torch.exp(slab_lnvar)
+        eps = torch.randn_like(var)
+
+        return mean + eps * torch.sqrt(var) - bias_k - bias_d
+    
+    def soft_max(self, 
+                 z: torch.Tensor,
+    ):    
+        return torch.exp(self.log_softmax(z))
+    
+    def sparse_kl_loss(
+        self,
+        logit_0, 
+        lnvar_0,
+        spike_logit,
+        slab_mean,
+        slab_lnvar,
+    ):                           
+        ## PIP KL between p and p0
+        ## p * ln(p / p0) + (1-p) * ln(1-p/1-p0)
+        ## = p * ln(p / 1-p) + ln(1-p) +
+        ##   p * ln(1-p0 / p0) - ln(1-p0)
+        ## = sigmoid(logit) * logit - softplus(logit)
+        ##   - sigmoid(logit) * logit0 + softplus(logit0)
+        pip_hat = torch.sigmoid(spike_logit)
+        kl_pip_1 = pip_hat * (spike_logit - logit_0)
+        kl_pip = kl_pip_1 - nn.functional.softplus(spike_logit) + nn.functional.softplus(logit_0)
+        ## Gaussian KL between N(μ,ν) and N(0, v0) 
+        sq_term = torch.exp(-lnvar_0) * (torch.square(slab_mean) + torch.exp(slab_lnvar))
+        kl_g = -0.5 * (1. + slab_lnvar - lnvar_0 - sq_term)
+        ## Combine both logit and Gaussian KL
+        return torch.sum(kl_pip + pip_hat * kl_g) # return a number sum over [N_topics, N_genes]
+        
 
 

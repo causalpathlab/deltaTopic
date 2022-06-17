@@ -19,12 +19,8 @@ from scvi.model.base import RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass
 from scvi.train import TrainRunner
 from task.TotalDeltaETM_TrainingPlan import TrainingPlan
 
-from module.DeltaETM_module import TotalDeltaETM_module, TotalDeltaETM_module_decoupled, ETM_module, BayesianETM_module
+from module.DeltaETM_module import TotalDeltaETM_module, TotalDeltaETM_module_decoupled, BETM_module, BayesianETM_module
 from scvi.train import TrainRunner
-
-#import wandb
-# start a new experiment
-#wandb.init(project="TotalDeltaETM")
 
 logger = logging.getLogger(__name__)
 
@@ -932,9 +928,9 @@ class TotalDeltaETM_decoupled(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass
         model.to_device(device)
         return model
 
-class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
+class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
     """
-    DeltaETM
+    BaeyainETM
 
     Parameters
     ----------
@@ -959,7 +955,7 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
     --------
     >>> adata_seq = anndata.read_h5ad(path_to_anndata_seq)
     >>> scvi.data.setup_anndata(adata_seq)
-    >>> model = TotalDeltaEMT(adata_seq adata_pathway)
+    >>> model = BETM(adata_seq adata_pathway)
     >>> model.train(n_epochs=400)
 
 
@@ -970,11 +966,10 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         adata_seq: AnnData,
         adata_pathway: AnnData = None,
         mask: torch.Tensor = None,
-        n_latent: int = 4,
-        combine_latent: str = 'concat',
+        n_latent: int = 32,
         **model_kwargs,
     ):
-        super(ETM, self).__init__()
+        super(BETM, self).__init__()
         self.n_latent = n_latent
         self.adata = adata_seq
         self.scvi_setup_dicts_ = self.adata.uns["_scvi"]
@@ -998,21 +993,21 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             print("No pathways, use fully-connected layers\n")
         
         self.summary_stats = adata_seq.uns['_scvi']["summary_stats"]    
-        self.module = ETM_module(
-            dim_input_list = [self.summary_stats["n_vars"],self.summary_stats["n_vars"]],
+        self.module = BETM_module(
+            dim_input = self.summary_stats["n_vars"],
             total_genes = self.summary_stats["n_vars"],
             mask=self.mask,
-            n_batch=self.summary_stats["n_batch"],
+            #n_batch=self.summary_stats["n_batch"],
             n_latent=n_latent,
-            combine_method = combine_latent,
             **model_kwargs,
         )
         
         self._model_summary_string = (
-            "ETM decpoupled Model with the following params: \nn_latent: {},  n_genes: {}, "
-            + "n_batch: {}, combine_latent: {}"
-        ).format(n_latent, self.summary_stats["n_vars"], self.summary_stats["n_batch"], combine_latent)
-        self.init_params_ = self._get_init_params(locals())    
+            "BETM with the following params: \nn_latent: {},  n_genes: {}, "
+            + "n_batch: {}"
+        ).format(n_latent, self.summary_stats["n_vars"], self.summary_stats["n_batch"])
+        self.init_params_ = self._get_init_params(locals()) 
+           
         #wandb.watch(self.module.decoder, log_freq=10, log="all")
     def train(
         self,
@@ -1124,6 +1119,7 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             max_epochs=max_epochs,
             use_gpu=use_gpu,
             early_stopping=early_stopping,
+            check_val_every_n_epoch=check_val_every_n_epoch,
             **kwargs,
         )
         return runner()
@@ -1133,8 +1129,8 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         self,
         adata: AnnData = None,
         deterministic: bool = True,
-        batch_size: int = 128,
         output_softmax_z: bool = True,
+        batch_size: int = 128,
     ) -> List[np.ndarray]:
         """
         Return the latent space embedding for each dataset, i.e., spliced and unspliced
@@ -1145,10 +1141,10 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             List of adata_spliced and adata_unspliced.
         deterministic
             If true, use the mean of the encoder instead of a Gaussian sample.
+        output_softmax_z
+            if true, output probability, otherwise output z.    
         batch_size
             Minibatch size for data loading into model.
-        output_softmax_z
-            If true, return the softmax of the latent space embedding.
         """
         if adata is None:
             adata = self.adata
@@ -1162,14 +1158,57 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
                 sample_batch_unspliced,
                 *_,
             ) = _unpack_tensors(tensors)
-            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic, output_softmax_z = output_softmax_z)
+            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic, output_softmax_z=output_softmax_z)
             latent_z.append(z_dict["z"])                
 
         latent_z = torch.cat(latent_z).cpu().detach().numpy()
         
-        print(f'Deterministic: {deterministic}\nOutput_softmax_z: {output_softmax_z}')
+        print(f'Deterministic: {deterministic}, output_softmax_z: {output_softmax_z}' )
         return latent_z
     
+    
+    @torch.no_grad()
+    def get_parameters(
+        self,
+        save_dir = None, 
+        overwrite = False,
+    ) -> List[np.ndarray]:
+        """return the spike logit, slab mean, slab lnvar for rho"""
+        
+        self.module.eval()
+        decoder = self.module.decoder
+        
+        
+        if not os.path.exists(os.path.join(save_dir,"model_parameters")) or overwrite:
+            os.makedirs(os.path.join(save_dir,"model_parameters"), exist_ok=overwrite)
+            
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "spike_logit_rho.txt"
+            ), decoder.spike_logit_rho.cpu().numpy())
+        
+
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_mean_rho.txt"
+            ), decoder.slab_mean_rho.cpu().numpy())
+        
+    
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "slab_lnvar_rho.txt"
+            ), decoder.slab_lnvar_rho.cpu().numpy())
+        
+ 
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_gene_rho.txt"
+            ), decoder.bias_d_rho.cpu().numpy())
+        
+        
+        np.savetxt(os.path.join(
+                save_dir,"model_parameters", "bias_topic_rho.txt"
+            ), decoder.bias_k_rho.cpu().numpy())
+        
+        
     @torch.no_grad()
     def get_weights(
         self,
@@ -1186,13 +1225,56 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             Minibatch size for data loading into model.
         """
         self.module.eval()
-        log_sftm = nn.LogSoftmax(dim=-1)
-        log_delta = self.module.decoder.delta.detach()
-        log_rho = self.module.decoder.rho.detach()
+        rho = self.module.decoder.get_rho()
         
-        delta = torch.exp(log_sftm(log_delta))
-        rho = torch.exp(log_sftm(log_rho))
-        return delta.cpu().numpy(), rho.cpu().numpy(), log_delta.cpu().numpy(), log_rho.cpu().numpy()
+        return rho.cpu().numpy()
+    
+    @torch.no_grad()
+    def get_reconstruction_error(
+        self,
+        adata: Optional[AnnData] = None,
+        batch_size: Optional[int] = 128,
+    ) -> Union[float, Dict[str, float]]:
+        r"""
+        Return the reconstruction error for the data.
+
+        This is typically written as :math:`p(x \mid z)`, the likelihood term given one posterior sample.
+        Note, this is not the negative likelihood, higher is better.
+
+        Parameters
+        ----------
+        adata
+            AnnData object with equivalent structure to initial AnnData. If `None`, defaults to the
+            AnnData object used to initialize the model.
+        batch_size
+            Minibatch size for data loading into model.
+        """
+        
+        if adata is None:
+            adata = self.adata
+        scdl = self._make_data_loader(adata, batch_size=batch_size)
+        self.module.eval()
+        
+        reconstruction_loss_spliced_sum = 0
+        reconstruction_loss_unspliced_sum = 0
+        n_spliced = 0
+        n_unspliced = 0
+        
+        for tensors in scdl:
+            (
+                sample_batch_spliced,
+                sample_batch_unspliced,
+                *_,
+            ) = _unpack_tensors(tensors)
+            reconstruction_loss_spliced, reconstruction_loss_unspliced  = self.module.get_reconstruction_loss(sample_batch_spliced, sample_batch_unspliced)
+            reconstruction_loss_spliced_sum += torch.sum(reconstruction_loss_spliced)
+            reconstruction_loss_unspliced_sum += torch.sum(reconstruction_loss_unspliced)
+            n_spliced += sample_batch_spliced.shape[0]
+            n_unspliced += sample_batch_unspliced.shape[0]
+
+        recon_spliced = reconstruction_loss_spliced_sum/n_spliced
+        recon_unspliced = reconstruction_loss_unspliced_sum/n_unspliced
+        return recon_spliced.cpu().numpy(), recon_unspliced.cpu().numpy()
     
     def save(
         self,
@@ -1372,7 +1454,6 @@ class ETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         model.module.eval()
         model.to_device(device)
         return model
-
 
 class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
     """
