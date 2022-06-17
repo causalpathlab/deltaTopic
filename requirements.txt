@@ -2,7 +2,7 @@ absl-py==1.0.0
 aiohttp==3.8.1
 aiosignal==1.2.0
 anndata==0.7.8
-annoy==1.17.0
+#annoy==1.17.0
 anyio==3.5.0
 argon2-cffi==21.3.0
 argon2-cffi-bindings==21.2.0
@@ -27,7 +27,7 @@ cycler==0.11.0
 dask==2022.2.1
 datashader==0.13.0
 datashape==0.5.2
-datatable==1.0.0
+#datatable==1.0.0
 debugpy==1.5.1
 decorator==5.1.1
 defusedxml==0.7.1
@@ -169,10 +169,10 @@ texttable==1.6.4
 threadpoolctl==3.1.0
 tomli==2.0.1
 toolz==0.11.2
-torch==1.10.2+cu113
-torchaudio==0.10.2+cu113
+torch==1.10.2
+torchaudio==0.10.2
 torchmetrics==0.7.2
-torchvision==0.11.3+cu113
+torchvision==0.11.3
 tornado==6.1
 tqdm==4.62.3
 traitlets==5.1.1
