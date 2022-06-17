@@ -3,7 +3,7 @@ import os
 import pickle
 import warnings
 from itertools import cycle
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Sequence
 from typing_extensions import Literal
 
 import numpy as np
@@ -1401,7 +1401,7 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
     --------
     >>> adata_seq = anndata.read_h5ad(path_to_anndata_seq)
     >>> scvi.data.setup_anndata(adata_seq)
-    >>> model = TotalDeltaEMT(adata_seq adata_pathway)
+    >>> model = BDeltaTopic(adata_seq adata_pathway)
     >>> model.train(n_epochs=400)
 
 
@@ -1704,6 +1704,53 @@ class BDeltaTopic(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         rho, delta = self.module.decoder.get_rho_delta()
         
         return delta.cpu().numpy(), rho.cpu().numpy()
+    
+    @torch.no_grad()
+    def get_reconstruction_error(
+        self,
+        adata: Optional[AnnData] = None,
+        batch_size: Optional[int] = 128,
+    ) -> Union[float, Dict[str, float]]:
+        r"""
+        Return the reconstruction error for the data.
+
+        This is typically written as :math:`p(x \mid z)`, the likelihood term given one posterior sample.
+        Note, this is not the negative likelihood, higher is better.
+
+        Parameters
+        ----------
+        adata
+            AnnData object with equivalent structure to initial AnnData. If `None`, defaults to the
+            AnnData object used to initialize the model.
+        batch_size
+            Minibatch size for data loading into model.
+        """
+        
+        if adata is None:
+            adata = self.adata
+        scdl = self._make_data_loader(adata, batch_size=batch_size)
+        self.module.eval()
+        
+        reconstruction_loss_spliced_sum = 0
+        reconstruction_loss_unspliced_sum = 0
+        n_spliced = 0
+        n_unspliced = 0
+        
+        for tensors in scdl:
+            (
+                sample_batch_spliced,
+                sample_batch_unspliced,
+                *_,
+            ) = _unpack_tensors(tensors)
+            reconstruction_loss_spliced, reconstruction_loss_unspliced  = self.module.get_reconstruction_loss(sample_batch_spliced, sample_batch_unspliced)
+            reconstruction_loss_spliced_sum += torch.sum(reconstruction_loss_spliced)
+            reconstruction_loss_unspliced_sum += torch.sum(reconstruction_loss_unspliced)
+            n_spliced += sample_batch_spliced.shape[0]
+            n_unspliced += sample_batch_unspliced.shape[0]
+
+        recon_spliced = reconstruction_loss_spliced_sum/n_spliced
+        recon_unspliced = reconstruction_loss_unspliced_sum/n_unspliced
+        return recon_spliced.cpu().numpy(), recon_unspliced.cpu().numpy()
     
     def save(
         self,

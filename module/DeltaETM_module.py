@@ -197,6 +197,7 @@ class TotalDeltaETM_module(BaseModuleClass):
             z = generative_outputs["hh"]      
         return z
 
+    @auto_move_data
     def get_reconstruction_loss(
         self,
         x: torch.Tensor,
@@ -233,7 +234,6 @@ class TotalDeltaETM_module(BaseModuleClass):
         
         recon_spliced = torch.mm(hh,torch.exp(log_beta_spliced))
         recon_unspliced = torch.mm(hh,torch.exp(log_beta_unspliced))
-        
         
         reconstruction_loss_spliced = self.reconstruction_loss(x, recon_spliced)
         reconstruction_loss_unspliced = self.reconstruction_loss(y, recon_unspliced)
@@ -1024,7 +1024,8 @@ class BayesianETM_module(BaseModuleClass):
             generative_outputs = self.generative(z)
             z = generative_outputs["theta"]      
         return dict(z=z)
-
+    
+    @auto_move_data
     def get_reconstruction_loss(
         self,
         x: torch.Tensor,
