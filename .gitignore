@@ -3,7 +3,6 @@ models/
 data/
 wandb/
 data_script/
-Train_scvi.py
 analysis/
 *DS_Store
 !data/CRA001160/final_CRA001160_spliced_allgenes.h5ad
