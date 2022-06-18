@@ -33,6 +33,14 @@ def _unpack_tensors(tensors):
     y = tensors[_CONSTANTS.LABELS_KEY].squeeze_(0)
     return x, unspliced, local_l_mean, local_l_var, batch_index, y
 
+def _unpack_tensors_BETM(tensors):
+    x = tensors[_CONSTANTS.X_KEY].squeeze_(0)
+    local_l_mean = tensors[_CONSTANTS.LOCAL_L_MEAN_KEY].squeeze_(0)
+    local_l_var = tensors[_CONSTANTS.LOCAL_L_VAR_KEY].squeeze_(0)
+    batch_index = tensors[_CONSTANTS.BATCH_KEY].squeeze_(0)
+    y = tensors[_CONSTANTS.LABELS_KEY].squeeze_(0)
+    return x, local_l_mean, local_l_var, batch_index, y
+
 def set_up_adata_pathway(adata_pathway, minGenes=10):
     """
     remove pathways with less than "minGenes" genes
@@ -1133,7 +1141,7 @@ class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         batch_size: int = 128,
     ) -> List[np.ndarray]:
         """
-        Return the latent space embedding for each dataset, i.e., spliced and unspliced
+        Return the latent space embedding for each dataset, 
 
         Parameters
         ----------
@@ -1155,10 +1163,9 @@ class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         for tensors in scdl:
             (
                 sample_batch,
-                sample_batch_unspliced,
                 *_,
-            ) = _unpack_tensors(tensors)
-            z_dict  = self.module.sample_from_posterior_z(sample_batch, sample_batch_unspliced, deterministic=deterministic, output_softmax_z=output_softmax_z)
+            ) = _unpack_tensors_BETM(tensors)
+            z_dict  = self.module.sample_from_posterior_z(sample_batch, deterministic=deterministic, output_softmax_z=output_softmax_z)
             latent_z.append(z_dict["z"])                
 
         latent_z = torch.cat(latent_z).cpu().detach().numpy()
@@ -1185,28 +1192,28 @@ class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         
         np.savetxt(os.path.join(
                 save_dir,"model_parameters", "spike_logit_rho.txt"
-            ), decoder.spike_logit_rho.cpu().numpy())
+            ), decoder.spike_logit.cpu().numpy())
         
 
         
         np.savetxt(os.path.join(
                 save_dir,"model_parameters", "slab_mean_rho.txt"
-            ), decoder.slab_mean_rho.cpu().numpy())
+            ), decoder.slab_mean.cpu().numpy())
         
     
         np.savetxt(os.path.join(
                 save_dir,"model_parameters", "slab_lnvar_rho.txt"
-            ), decoder.slab_lnvar_rho.cpu().numpy())
+            ), decoder.slab_lnvar.cpu().numpy())
         
  
         np.savetxt(os.path.join(
                 save_dir,"model_parameters", "bias_gene_rho.txt"
-            ), decoder.bias_d_rho.cpu().numpy())
+            ), decoder.bias_d.cpu().numpy())
         
         
         np.savetxt(os.path.join(
                 save_dir,"model_parameters", "bias_topic_rho.txt"
-            ), decoder.bias_k_rho.cpu().numpy())
+            ), decoder.bias_k.cpu().numpy())
         
         
     @torch.no_grad()
@@ -1255,26 +1262,22 @@ class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
         scdl = self._make_data_loader(adata, batch_size=batch_size)
         self.module.eval()
         
-        reconstruction_loss_spliced_sum = 0
-        reconstruction_loss_unspliced_sum = 0
-        n_spliced = 0
-        n_unspliced = 0
+        reconstruction_loss_sum = 0
+        n = 0
         
         for tensors in scdl:
             (
-                sample_batch_spliced,
-                sample_batch_unspliced,
+                sample_batch,
                 *_,
             ) = _unpack_tensors(tensors)
-            reconstruction_loss_spliced, reconstruction_loss_unspliced  = self.module.get_reconstruction_loss(sample_batch_spliced, sample_batch_unspliced)
-            reconstruction_loss_spliced_sum += torch.sum(reconstruction_loss_spliced)
-            reconstruction_loss_unspliced_sum += torch.sum(reconstruction_loss_unspliced)
-            n_spliced += sample_batch_spliced.shape[0]
-            n_unspliced += sample_batch_unspliced.shape[0]
-
-        recon_spliced = reconstruction_loss_spliced_sum/n_spliced
-        recon_unspliced = reconstruction_loss_unspliced_sum/n_unspliced
-        return recon_spliced.cpu().numpy(), recon_unspliced.cpu().numpy()
+            reconstruction_loss  = self.module.get_reconstruction_loss(sample_batch)
+            reconstruction_loss_sum += torch.sum(reconstruction_loss)
+            
+            n += sample_batch.shape[0]
+            
+        recon = reconstruction_loss_sum/n
+        
+        return recon.cpu().numpy()
     
     def save(
         self,
