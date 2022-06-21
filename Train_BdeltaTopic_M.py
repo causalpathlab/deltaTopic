@@ -41,16 +41,15 @@ setup_anndata(adata_spliced, layer="counts", batch_key="sample_id", protein_expr
 #%%
 # create model
 from DeltaETM_model import BDeltaTopic
-model = BDeltaTopic(adata_spliced, n_latent = args.nLV, combine_latent= args.combine_method, pip0_rho=args.pip0_rho, pip0_delta=args.pip0_delta, kl_weight_beta = args.kl_weight_beta)
+model = BDeltaTopic(adata_spliced, n_latent = args.nLV, combine_latent= args.combine_method, pip0_rho=args.pip0_rho, 
+                    pip0_delta=args.pip0_delta, kl_weight_beta = args.kl_weight_beta,
+                    n_layers_encoder_individual = 2, n_layers_encoder_shared =  2, dim_hidden_encoder =  128, 
+                    dropout_rate_encoder = 0)
 #%%
 # this has to be passed, otherwise pytroch lighting logging won't be passed to wandb
 from pytorch_lightning.loggers import WandbLogger
 wandb_logger = WandbLogger(project = 'BDeltaTopic')
-model_kwargs = {"lr": args.lr, 'use_gpu':args.use_gpu, 'train_size':args.train_size,
-                "n_layers_encoder_individual": 2, 
-                "n_layers_encoder_shared": 2,
-                "dim_hidden_encoder": 64,
-                "dropout_rate_encoder": 0}
+model_kwargs = {"lr": args.lr, 'use_gpu':args.use_gpu, 'train_size':args.train_size}
         
         
 print(args)

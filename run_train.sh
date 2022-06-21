@@ -2,25 +2,29 @@
 source $HOME/DisNet/bin/activate
 
 
-#June 17 
-## add scvi
+#June 21
+## medium modol encoder 2+2->2 64, no dropout in encoder
 ## azure
-python Train_scvi.py --EPOCHS 2000 --nLV 16 --bs 512 --use_gpu 0 --train_size 0.9 &
-python Train_scvi.py --EPOCHS 2000 --nLV 32 --bs 512 --use_gpu 3 --train_size 0.9 &
-python Train_scvi.py --EPOCHS 2000 --nLV 64 --bs 512 --use_gpu 2 --train_size 0.9 &
+## test underfiting
+python Train_BdeltaTopic_M.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 0 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
+python Train_BdeltaTopic_M.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 1 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 10&
 
-#June 17 
+python Train_BdeltaTopic_M.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 2 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
+python Train_BdeltaTopic_M.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 3 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 10&
+
+
+#June 20
 ## compare deltaETM and BETM on holdout set
 ## azure
-
 #python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 0 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
-#python Train_BETM.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 0 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 1 &
+#python Train_BETM.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 1 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 1 &
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 2 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 10&
+#python Train_BETM.py --EPOCHS 2000 --nLV 32 --bs 1024 --use_gpu 3 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 10 &
 
-#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 1 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
-#python Train_BETM.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 2 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 1 &
-
-#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 16 --bs 1024 --use_gpu 2 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
-#python Train_BETM.py --EPOCHS 2000 --nLV 16 --bs 1024 --use_gpu 3 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 1 &
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 0 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 1&
+#python Train_BETM.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 1 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 1 &
+#python Train_BdeltaTopic.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 2 --train_size 0.9 --combine_method add --pip0_rho 0.1 --pip0_delta 0.1  --kl_weight_beta 10&
+#python Train_BETM.py --EPOCHS 2000 --nLV 64 --bs 1024 --use_gpu 3 --train_size 0.9 --pip0_rho 0.1  --kl_weight_beta 10 &
 
 #june 17 
 ## test 64 
