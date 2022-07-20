@@ -1269,7 +1269,7 @@ class BETM(RNASeqMixin, VAEMixin, ArchesMixin, BaseModelClass):
             (
                 sample_batch,
                 *_,
-            ) = _unpack_tensors(tensors)
+            ) = _unpack_tensors_BETM(tensors)
             reconstruction_loss  = self.module.get_reconstruction_loss(sample_batch)
             reconstruction_loss_sum += torch.sum(reconstruction_loss)
             
